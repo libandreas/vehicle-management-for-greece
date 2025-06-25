@@ -37,7 +37,7 @@ AND (make IS NOT NULL OR model IS NOT NULL OR year IS NOT NULL OR engine_capacit
 
 -- ΒΗΜΑ 6: Ορισμός προεπιλεγμένης τιμής για κενά full_vehicle_name
 UPDATE vehicles 
-SET full_vehicle_name = 'Άγνωστο όχημα'
+SET full_vehicle_name = 'Άγνωστο όχημα'ssh-keygen -t ed25519 -C "your_email@example.com"cat ~/.ssh/id_ed25519.pubcat ~/.ssh/id_ed25519.pub
 WHERE full_vehicle_name IS NULL OR TRIM(full_vehicle_name) = '';
 
 -- ΒΗΜΑ 7: Εμφάνιση των δεδομένων για επιβεβαίωση
