@@ -44,6 +44,16 @@ export default function Menu() {
             Διαχείριση εισερχομένων οχημάτων
           </div>
         </button>
+
+        <button
+          onClick={() => handleNavigate('/work-scheduling')}
+          className="w-full text-left p-4 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
+        >
+          <div className="font-semibold">Προγραμματισμός Εργασιών</div>
+          <div className="text-sm text-gray-500 mt-1">
+            Διαχείριση και προγραμματισμός εργασιών
+          </div>
+        </button>
       </nav>
     </div>
   );
