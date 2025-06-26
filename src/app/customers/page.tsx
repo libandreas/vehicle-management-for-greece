@@ -345,8 +345,8 @@ export default function CustomersPage() {
 			debt: customer.debt ? customer.debt.toString() : "",
 			credit: customer.credit ? customer.credit.toString() : "",
 			vehiclePlate: customer.vehicle_plate || "",
-			entryDate: customer.entry_date || "",
-			entryTime: customer.entry_time || "",
+			entryDate: new Date().toISOString().split('T')[0], // Πάντα τρέχουσα ημερομηνία
+			entryTime: new Date().toTimeString().slice(0, 5), // Πάντα τρέχουσα ώρα
 			vehicleCategory: customer.vehicle_category || "",
 			manufacturer: customer.manufacturer || "",
 			serviceType: customer.service_type || "άπαξ",
@@ -653,7 +653,7 @@ export default function CustomersPage() {
 												className="w-full border-2 border-red-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 												required
 											/>
-											<p className="text-xs text-gray-500 mt-1">Προεπιλογή: τρέχουσα ημερομηνία</p>
+											<p className="text-xs text-gray-500 mt-1">Προεπιλογή: τρέχουσα ημερομηνία (αλλάζει αυτόματα κάθε φορά)</p>
 										</div>
 
 										<div>
@@ -668,7 +668,7 @@ export default function CustomersPage() {
 												className="w-full border-2 border-red-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 												required
 											/>
-											<p className="text-xs text-gray-500 mt-1">Προεπιλογή: τρέχουσα ώρα</p>
+											<p className="text-xs text-gray-500 mt-1">Προεπιλογή: τρέχουσα ώρα (αλλάζει αυτόματα κάθε φορά)</p>
 										</div>
 
 										<div>
