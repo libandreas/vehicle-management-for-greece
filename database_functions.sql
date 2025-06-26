@@ -84,8 +84,10 @@ BEGIN
     PERFORM add_column_if_not_exists('customers', 'manufacturer', 'VARCHAR(100)');
     
     -- Στοιχεία υπηρεσίας
+    PERFORM add_column_if_not_exists('customers', 'facility_location', 'VARCHAR(200)');
     PERFORM add_column_if_not_exists('customers', 'service_type', 'VARCHAR(50)');
     PERFORM add_column_if_not_exists('customers', 'service_category', 'VARCHAR(200)');
+    PERFORM add_column_if_not_exists('customers', 'other_service_description', 'TEXT');
     PERFORM add_column_if_not_exists('customers', 'agreed_amount', 'DECIMAL(10,2) DEFAULT 0.00');
     
     -- Διαρκής παροχή υπηρεσίας

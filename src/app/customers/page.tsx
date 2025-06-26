@@ -29,7 +29,10 @@ export default function CustomersPage() {
 		manufacturer: "",
 		serviceType: "",
 		serviceCategory: "",
+		otherServiceDescription: "", // Ξεχωριστό πεδίο για περιγραφή λοιπών υπηρεσιών
 		agreedAmount: "",
+		// Εγκατάσταση οντότητας
+		facilityLocation: "",
 		// Διαρκής παροχή υπηρεσίας
 		periodicity: "",
 		serviceStartDate: "",
@@ -70,6 +73,8 @@ export default function CustomersPage() {
 				{ name: 'manufacturer', type: 'VARCHAR(100)', comment: 'Εργοστάσιο κατασκευής (διαλειτουργικότητα)' },
 				{ name: 'service_type', type: 'VARCHAR(50)', comment: 'Τύπος υπηρεσίας (άπαξ, επαναλαμβανόμενη, διαρκή)' },
 				{ name: 'service_category', type: 'VARCHAR(200)', comment: 'Κατηγορία παρεχόμενης υπηρεσίας' },
+				{ name: 'other_service_description', type: 'TEXT', comment: 'Περιγραφή λοιπών υπηρεσιών' },
+				{ name: 'facility_location', type: 'VARCHAR(200)', comment: 'Εγκατάσταση οντότητας' },
 				{ name: 'agreed_amount', type: 'DECIMAL(10,2)', comment: 'Συμφωνηθέν ποσό σε ευρώ' },
 				{ name: 'periodicity', type: 'VARCHAR(50)', comment: 'Περιοδικότητα για διαρκή υπηρεσία' },
 				{ name: 'service_start_date', type: 'DATE', comment: 'Ημερομηνία έναρξης διαρκούς υπηρεσίας' },
@@ -127,7 +132,9 @@ export default function CustomersPage() {
 			manufacturer: "",
 			serviceType: "άπαξ",
 			serviceCategory: "",
+			otherServiceDescription: "",
 			agreedAmount: "",
+			facilityLocation: "",
 			periodicity: "",
 			serviceStartDate: "",
 			serviceEndDate: "",
@@ -195,7 +202,7 @@ export default function CustomersPage() {
 			// Έλεγχος υποχρεωτικών πεδίων
 			if (!formData.firstName || !formData.lastName || !formData.phone || 
 				!formData.vehiclePlate || !formData.entryDate || !formData.entryTime ||
-				!formData.serviceType || !formData.serviceCategory) {
+				!formData.serviceType || !formData.serviceCategory || !formData.facilityLocation) {
 				setMessage("Σφάλμα: Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία (με κόκκινο πλαίσιο)");
 				return;
 			}
@@ -221,8 +228,8 @@ export default function CustomersPage() {
 			}
 
 			// Έλεγχος περιγραφής για κατηγορία "Λοιπά"
-			if (formData.serviceCategory === "Λοιπά" && !formData.notes) {
-				setMessage("Σφάλμα: Η περιγραφή είναι υποχρεωτική για την κατηγορία 'Λοιπά'");
+			if (formData.serviceCategory === "Λοιπά" && !formData.otherServiceDescription) {
+				setMessage("Σφάλμα: Η περιγραφή λοιπών υπηρεσιών είναι υποχρεωτική για την κατηγορία 'Λοιπά'");
 				return;
 			}
 
@@ -249,6 +256,8 @@ export default function CustomersPage() {
 						manufacturer: formData.manufacturer,
 						service_type: formData.serviceType,
 						service_category: formData.serviceCategory,
+						other_service_description: formData.otherServiceDescription,
+						facility_location: formData.facilityLocation,
 						agreed_amount: parseFloat(formData.agreedAmount) || 0,
 						periodicity: formData.periodicity,
 						service_start_date: formData.serviceStartDate,
@@ -293,6 +302,8 @@ export default function CustomersPage() {
 						manufacturer: formData.manufacturer,
 						service_type: formData.serviceType,
 						service_category: formData.serviceCategory,
+						other_service_description: formData.otherServiceDescription,
+						facility_location: formData.facilityLocation,
 						agreed_amount: parseFloat(formData.agreedAmount) || 0,
 						periodicity: formData.periodicity,
 						service_start_date: formData.serviceStartDate,
@@ -340,7 +351,9 @@ export default function CustomersPage() {
 			manufacturer: customer.manufacturer || "",
 			serviceType: customer.service_type || "άπαξ",
 			serviceCategory: customer.service_category || "",
+			otherServiceDescription: customer.other_service_description || "",
 			agreedAmount: customer.agreed_amount ? customer.agreed_amount.toString() : "",
+			facilityLocation: customer.facility_location || "",
 			periodicity: customer.periodicity || "",
 			serviceStartDate: customer.service_start_date || "",
 			serviceEndDate: customer.service_end_date || "",
@@ -499,6 +512,11 @@ export default function CustomersPage() {
 														{customer.service_category && (
 															<div className="text-xs text-gray-500 max-w-xs truncate" title={customer.service_category}>
 																{customer.service_category}
+															</div>
+														)}
+														{customer.service_category === "Λοιπά" && customer.other_service_description && (
+															<div className="text-xs text-blue-600 max-w-xs truncate" title={customer.other_service_description}>
+																{customer.other_service_description}
 															</div>
 														)}
 													</td>
@@ -695,6 +713,21 @@ export default function CustomersPage() {
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 										<div>
 											<label className="block text-sm font-medium text-gray-700 mb-2">
+												α) Εγκατάσταση Οντότητας *
+											</label>
+											<input
+												type="text"
+												name="facilityLocation"
+												value={formData.facilityLocation}
+												onChange={handleInputChange}
+												className="w-full border-2 border-red-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+												placeholder="Διεύθυνση εγκατάστασης..."
+												required
+											/>
+										</div>
+
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-2">
 												Τύπος Υπηρεσίας *
 											</label>
 											<select
@@ -738,8 +771,8 @@ export default function CustomersPage() {
 													Περιγραφή Λοιπών Υπηρεσιών *
 												</label>
 												<textarea
-													name="notes"
-													value={formData.notes}
+													name="otherServiceDescription"
+													value={formData.otherServiceDescription}
 													onChange={handleInputChange}
 													className="w-full border-2 border-red-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
 													placeholder="Περιγράψτε την υπηρεσία..."
@@ -774,14 +807,18 @@ export default function CustomersPage() {
 									</div>
 								</div>
 
-								{/* Διαρκής Παροχή Υπηρεσίας - Εμφανίζεται μόνο για διαρκή υπηρεσία */}
+								{/* Διαρκής Παροχή Υπηρεσίας - Εμφανίζεται μόνο για διαρκή υπηρεσία ή λήψη σχετικού δικαιώματος */}
 								{formData.serviceType === "διαρκή" && (
 									<div className="bg-yellow-50 p-4 rounded-md">
-										<h4 className="text-md font-medium text-gray-900 mb-4">Διαρκής Παροχή Υπηρεσίας</h4>
+										<h4 className="text-md font-medium text-gray-900 mb-2">Διαρκής Παροχή Υπηρεσίας</h4>
+										<p className="text-sm text-gray-600 mb-4">
+											Ειδικά στην περίπτωση της διαρκούς μίσθωσης/υπηρεσίας ή κατόπιν λήψης σχετικού δικαιώματος
+										</p>
 										<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-2">
 													Περιοδικότητα *
+													<span className="text-xs text-gray-500 block">α) Συμπληρώνεται σε περίπτωση διαρκούς μίσθωσης/υπηρεσίας</span>
 												</label>
 												<select
 													name="periodicity"
@@ -791,9 +828,13 @@ export default function CustomersPage() {
 													required={formData.serviceType === "διαρκή"}
 												>
 													<option value="">Επιλέξτε περιοδικότητα</option>
+													<option value="Ημερησίως">Ημερησίως</option>
 													<option value="Εβδομαδιαία">Εβδομαδιαία</option>
+													<option value="Δεκαπενθήμερη">Δεκαπενθήμερη</option>
 													<option value="Μηνιαία">Μηνιαία</option>
+													<option value="Διμηνιαία">Διμηνιαία</option>
 													<option value="Τριμηνιαία">Τριμηνιαία</option>
+													<option value="Τετραμηνιαία">Τετραμηνιαία</option>
 													<option value="Εξαμηνιαία">Εξαμηνιαία</option>
 													<option value="Ετήσια">Ετήσια</option>
 												</select>
@@ -802,6 +843,7 @@ export default function CustomersPage() {
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-2">
 													Ημερομηνία Έναρξης *
+													<span className="text-xs text-gray-500 block">β) Συμπληρώνεται σε περίπτωση διαρκούς μίσθωσης/υπηρεσίας ή λήψης δικαιώματος</span>
 												</label>
 												<input
 													type="date"
@@ -816,6 +858,7 @@ export default function CustomersPage() {
 											<div>
 												<label className="block text-sm font-medium text-gray-700 mb-2">
 													Ημερομηνία Λήξης
+													<span className="text-xs text-gray-500 block">γ) Συμπληρώνεται σε περίπτωση διαρκούς μίσθωσης/υπηρεσίας ή λήψης δικαιώματος</span>
 												</label>
 												<input
 													type="date"
@@ -867,22 +910,20 @@ export default function CustomersPage() {
 									</div>
 								</div>
 
-								{/* Σημειώσεις - Μόνο εάν δεν είναι "Λοιπά" η κατηγορία */}
-								{formData.serviceCategory !== "Λοιπά" && (
-									<div>
-										<label className="block text-sm font-medium text-gray-700 mb-2">
-											Σημειώσεις
-										</label>
-										<textarea
-											name="notes"
-											value={formData.notes}
-											onChange={handleInputChange}
-											rows={4}
-											className="w-full border-2 border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-											placeholder="Προαιρετικές σημειώσεις για την υπηρεσία..."
-										/>
-									</div>
-								)}
+								{/* Σημειώσεις - Πάντα εμφανίζονται ως προαιρετικές */}
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-2">
+										Σημειώσεις
+									</label>
+									<textarea
+										name="notes"
+										value={formData.notes}
+										onChange={handleInputChange}
+										rows={4}
+										className="w-full border-2 border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+										placeholder="Προαιρετικές σημειώσεις για την υπηρεσία..."
+									/>
+								</div>
 
 								{message && (
 									<div className={`p-4 rounded-md ${
