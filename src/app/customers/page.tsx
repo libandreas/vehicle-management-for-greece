@@ -42,6 +42,71 @@ export default function CustomersPage() {
 	const [message, setMessage] = useState("");
 	const [isEditing, setIsEditing] = useState(false);
 
+	// Συνάρτηση για έλεγχο και δημιουργία πίνακα/στηλών
+	const ensureTableAndColumns = async () => {
+		try {
+			// Έλεγχος αν υπάρχει ο πίνακας customers
+			const { data: tableExists, error: tableError } = await supabase
+				.from('customers')
+				.select('id')
+				.limit(1);
+
+			// Αν ο πίνακας δεν υπάρχει, δημιουργούμε τον
+			if (tableError && tableError.code === '42P01') {
+				console.log('Δημιουργία πίνακα customers...');
+				const { error: createTableError } = await supabase.rpc('create_customers_table');
+				if (createTableError) {
+					console.error('Σφάλμα δημιουργίας πίνακα:', createTableError);
+					return false;
+				}
+			}
+
+			// Έλεγχος και προσθήκη στηλών αν δεν υπάρχουν
+			const columnsToAdd = [
+				{ name: 'vehicle_plate', type: 'VARCHAR(20)', comment: 'Αριθμός κυκλοφορίας οχήματος' },
+				{ name: 'entry_date', type: 'DATE', comment: 'Ημερομηνία εισόδου' },
+				{ name: 'entry_time', type: 'TIME', comment: 'Ώρα εισόδου' },
+				{ name: 'vehicle_category', type: 'VARCHAR(100)', comment: 'Κατηγορία οχήματος (διαλειτουργικότητα)' },
+				{ name: 'manufacturer', type: 'VARCHAR(100)', comment: 'Εργοστάσιο κατασκευής (διαλειτουργικότητα)' },
+				{ name: 'service_type', type: 'VARCHAR(50)', comment: 'Τύπος υπηρεσίας (άπαξ, επαναλαμβανόμενη, διαρκή)' },
+				{ name: 'service_category', type: 'VARCHAR(200)', comment: 'Κατηγορία παρεχόμενης υπηρεσίας' },
+				{ name: 'agreed_amount', type: 'DECIMAL(10,2)', comment: 'Συμφωνηθέν ποσό σε ευρώ' },
+				{ name: 'periodicity', type: 'VARCHAR(50)', comment: 'Περιοδικότητα για διαρκή υπηρεσία' },
+				{ name: 'service_start_date', type: 'DATE', comment: 'Ημερομηνία έναρξης διαρκούς υπηρεσίας' },
+				{ name: 'service_end_date', type: 'DATE', comment: 'Ημερομηνία λήξης διαρκούς υπηρεσίας' },
+				{ name: 'external_service', type: 'VARCHAR(200)', comment: 'Παροχή υπηρεσιών εκτός εγκατάστασης' },
+				{ name: 'partner_afm', type: 'VARCHAR(20)', comment: 'ΑΦΜ συνεργαζόμενης οντότητας' },
+				{ name: 'patronymic', type: 'VARCHAR(100)', comment: 'Πατρώνυμο πελάτη' },
+				{ name: 'afm', type: 'VARCHAR(20)', comment: 'ΑΦΜ λήπτη υπηρεσίας' },
+				{ name: 'debt', type: 'DECIMAL(10,2) DEFAULT 0.00', comment: 'Χρέος πελάτη' },
+				{ name: 'credit', type: 'DECIMAL(10,2) DEFAULT 0.00', comment: 'Πίστωση πελάτη' }
+			];
+
+			for (const column of columnsToAdd) {
+				try {
+					// Προσπάθεια προσθήκης στήλης
+					const { error: addColumnError } = await supabase.rpc('add_column_if_not_exists', {
+						table_name: 'customers',
+						column_name: column.name,
+						column_type: column.type
+					});
+
+					if (addColumnError && !addColumnError.message.includes('already exists')) {
+						console.error(`Σφάλμα προσθήκης στήλης ${column.name}:`, addColumnError);
+					}
+				} catch (error) {
+					// Αγνοούμε σφάλματα αν η στήλη υπάρχει ήδη
+					console.log(`Στήλη ${column.name} ήδη υπάρχει ή σφάλμα:`, error);
+				}
+			}
+
+			return true;
+		} catch (error) {
+			console.error('Σφάλμα στον έλεγχο πίνακα/στηλών:', error);
+			return false;
+		}
+	};
+
 	// Βοηθητική συνάρτηση για καθαρισμό φόρμας
 	const clearForm = () => {
 		setFormData({
@@ -120,6 +185,47 @@ export default function CustomersPage() {
 		setMessage("");
 
 		try {
+			// Έλεγχος και δημιουργία πίνακα/στηλών αν χρειάζεται
+			const tableReady = await ensureTableAndColumns();
+			if (!tableReady) {
+				setMessage("Σφάλμα: Δεν ήταν δυνατή η προετοιμασία της βάσης δεδομένων");
+				return;
+			}
+
+			// Έλεγχος υποχρεωτικών πεδίων
+			if (!formData.firstName || !formData.lastName || !formData.phone || 
+				!formData.vehiclePlate || !formData.entryDate || !formData.entryTime ||
+				!formData.serviceType || !formData.serviceCategory) {
+				setMessage("Σφάλμα: Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία (με κόκκινο πλαίσιο)");
+				return;
+			}
+
+			// Έλεγχος ΑΦΜ για επαναλαμβανόμενη υπηρεσία
+			if (formData.serviceType === "επαναλαμβανόμενη" && !formData.afm) {
+				setMessage("Σφάλμα: Το ΑΦΜ είναι υποχρεωτικό για επαναλαμβανόμενη υπηρεσία");
+				return;
+			}
+
+			// Έλεγχος πεδίων για διαρκή υπηρεσία
+			if (formData.serviceType === "διαρκή") {
+				if (!formData.agreedAmount || !formData.periodicity || !formData.serviceStartDate) {
+					setMessage("Σφάλμα: Για διαρκή υπηρεσία απαιτούνται: Συμφωνηθέν ποσό, Περιοδικότητα και Ημερομηνία έναρξης");
+					return;
+				}
+			}
+
+			// Έλεγχος ΑΦΜ συνεργαζόμενης οντότητας
+			if (formData.externalService === "Μετακίνηση σε συνεργαζόμενη οντότητα" && !formData.partnerAfm) {
+				setMessage("Σφάλμα: Το ΑΦΜ συνεργαζόμενης οντότητας είναι υποχρεωτικό");
+				return;
+			}
+
+			// Έλεγχος περιγραφής για κατηγορία "Λοιπά"
+			if (formData.serviceCategory === "Λοιπά" && !formData.notes) {
+				setMessage("Σφάλμα: Η περιγραφή είναι υποχρεωτική για την κατηγορία 'Λοιπά'");
+				return;
+			}
+
 			if (editingCustomer) {
 				// Επεξεργασία υπάρχοντος πελάτη
 				const { data, error } = await supabase
