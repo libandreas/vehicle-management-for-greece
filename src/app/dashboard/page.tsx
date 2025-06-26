@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import Menu from "../components/Menu";
 import { useEffect, useState } from "react";
 
 export default function DashboardPage() {
@@ -30,33 +31,7 @@ export default function DashboardPage() {
 
 	return (
 		<div className="min-h-screen bg-gray-100 flex">
-			{/* Sidebar */}
-			<div className="w-80 bg-white shadow-lg">
-				<div className="p-6 border-b">
-					<h2 className="text-xl font-bold text-gray-800">Μενού</h2>
-				</div>
-				<nav className="p-4 space-y-2">
-					<button
-						onClick={() => handleNavigate("/customers")}
-						className="w-full text-left p-4 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
-					>
-						<div className="font-semibold">Ψηφιακό Πελατολόγιο</div>
-						<div className="text-sm text-gray-500 mt-1">
-							Πλήρες σύστημα διαχείρισης πληροφοριών πελατών
-						</div>
-					</button>
-					
-					<button
-						onClick={() => handleNavigate("/vehicles")}
-						className="w-full text-left p-4 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
-					>
-						<div className="font-semibold">Οχήματα</div>
-						<div className="text-sm text-gray-500 mt-1">
-							Διαχείριση οχημάτων και service
-						</div>
-					</button>
-				</nav>
-			</div>
+			<Menu />
 
 			{/* Main Content */}
 			<div className="flex-1">
