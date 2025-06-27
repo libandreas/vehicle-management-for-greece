@@ -48,68 +48,28 @@ export default function CustomersPage() {
 	// Συνάρτηση για έλεγχο και δημιουργία πίνακα/στηλών
 	const ensureTableAndColumns = async () => {
 		try {
-			// Έλεγχος αν υπάρχει ο πίνακας customers
-			const { data: tableExists, error: tableError } = await supabase
+			// Απλός έλεγχος αν ο πίνακας υπάρχει με μια δοκιμαστική εισαγωγή
+			const { data: testData, error: testError } = await supabase
 				.from('customers')
-				.select('id')
+				.select('id, first_name, last_name, phone, vehicle_plate, entry_date, service_type, facility_location')
 				.limit(1);
 
-			// Αν ο πίνακας δεν υπάρχει, δημιουργούμε τον
-			if (tableError && tableError.code === '42P01') {
-				console.log('Δημιουργία πίνακα customers...');
-				const { error: createTableError } = await supabase.rpc('create_customers_table');
-				if (createTableError) {
-					console.error('Σφάλμα δημιουργίας πίνακα:', createTableError);
-					return false;
-				}
-			}
-
-			// Έλεγχος και προσθήκη στηλών αν δεν υπάρχουν
-			const columnsToAdd = [
-				{ name: 'vehicle_plate', type: 'VARCHAR(20)', comment: 'Αριθμός κυκλοφορίας οχήματος' },
-				{ name: 'entry_date', type: 'DATE', comment: 'Ημερομηνία εισόδου' },
-				{ name: 'entry_time', type: 'TIME', comment: 'Ώρα εισόδου' },
-				{ name: 'vehicle_category', type: 'VARCHAR(100)', comment: 'Κατηγορία οχήματος (διαλειτουργικότητα)' },
-				{ name: 'manufacturer', type: 'VARCHAR(100)', comment: 'Εργοστάσιο κατασκευής (διαλειτουργικότητα)' },
-				{ name: 'service_type', type: 'VARCHAR(50)', comment: 'Τύπος υπηρεσίας (άπαξ, επαναλαμβανόμενη, διαρκή)' },
-				{ name: 'service_category', type: 'VARCHAR(200)', comment: 'Κατηγορία παρεχόμενης υπηρεσίας' },
-				{ name: 'other_service_description', type: 'TEXT', comment: 'Περιγραφή λοιπών υπηρεσιών' },
-				{ name: 'facility_location', type: 'VARCHAR(200)', comment: 'Εγκατάσταση οντότητας' },
-				{ name: 'agreed_amount', type: 'DECIMAL(10,2)', comment: 'Συμφωνηθέν ποσό σε ευρώ' },
-				{ name: 'periodicity', type: 'VARCHAR(50)', comment: 'Περιοδικότητα για διαρκή υπηρεσία' },
-				{ name: 'service_start_date', type: 'DATE', comment: 'Ημερομηνία έναρξης διαρκούς υπηρεσίας' },
-				{ name: 'service_end_date', type: 'DATE', comment: 'Ημερομηνία λήξης διαρκούς υπηρεσίας' },
-				{ name: 'external_service', type: 'VARCHAR(200)', comment: 'Παροχή υπηρεσιών εκτός εγκατάστασης' },
-				{ name: 'partner_afm', type: 'VARCHAR(20)', comment: 'ΑΦΜ συνεργαζόμενης οντότητας' },
-				{ name: 'patronymic', type: 'VARCHAR(100)', comment: 'Πατρώνυμο πελάτη' },
-				{ name: 'afm', type: 'VARCHAR(20)', comment: 'ΑΦΜ λήπτη υπηρεσίας' },
-				{ name: 'debt', type: 'DECIMAL(10,2) DEFAULT 0.00', comment: 'Χρέος πελάτη' },
-				{ name: 'credit', type: 'DECIMAL(10,2) DEFAULT 0.00', comment: 'Πίστωση πελάτη' }
-			];
-
-			for (const column of columnsToAdd) {
-				try {
-					// Προσπάθεια προσθήκης στήλης
-					const { error: addColumnError } = await supabase.rpc('add_column_if_not_exists', {
-						table_name: 'customers',
-						column_name: column.name,
-						column_type: column.type
-					});
-
-					if (addColumnError && !addColumnError.message.includes('already exists')) {
-						console.error(`Σφάλμα προσθήκης στήλης ${column.name}:`, addColumnError);
-					}
-				} catch (error) {
-					// Αγνοούμε σφάλματα αν η στήλη υπάρχει ήδη
-					console.log(`Στήλη ${column.name} ήδη υπάρχει ή σφάλμα:`, error);
-				}
+			// Αν ο πίνακας δεν υπάρχει ή λείπουν στήλες, επιστρέφουμε false
+			if (testError) {
+				console.log('Ο πίνακας customers δεν υπάρχει ή λείπουν στήλες:', testError.message);
+				return false;
 			}
 
 			return true;
 		} catch (error) {
-			console.error('Σφάλμα στον έλεγχο πίνακα/στηλών:', error);
+			console.error('Σφάλμα στον έλεγχο πίνακα:', error);
 			return false;
 		}
+	};
+
+	// Βοηθητική συνάρτηση για μετατροπή κενών strings σε null για ημερομηνίες
+	const formatDateForDB = (dateString: string) => {
+		return dateString && dateString.trim() !== "" ? dateString : null;
 	};
 
 	// Βοηθητική συνάρτηση για καθαρισμό φόρμας
@@ -162,6 +122,10 @@ export default function CustomersPage() {
 
 			if (error) {
 				console.error("Error fetching customers:", error);
+				// Αν ο πίνακας δεν υπάρχει, εμφάνισε ενημερωτικό μήνυμα
+				if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+					setMessage("Ο πίνακας customers δεν υπάρχει στη βάση δεδομένων. Παρακαλώ εκτελέστε το αρχείο complete_setup.sql στο SQL Editor της Supabase.");
+				}
 			} else {
 				setCustomers(data || []);
 			}
@@ -195,7 +159,7 @@ export default function CustomersPage() {
 			// Έλεγχος και δημιουργία πίνακα/στηλών αν χρειάζεται
 			const tableReady = await ensureTableAndColumns();
 			if (!tableReady) {
-				setMessage("Σφάλμα: Δεν ήταν δυνατή η προετοιμασία της βάσης δεδομένων");
+				setMessage("Σφάλμα: Ο πίνακας customers δεν υπάρχει ή λείπουν απαραίτητες στήλες. Παρακαλώ επικοινωνήστε με τον διαχειριστή για να εκτελέσει τα SQL αρχεία ρύθμισης της βάσης δεδομένων.");
 				return;
 			}
 
@@ -250,8 +214,8 @@ export default function CustomersPage() {
 						credit: parseFloat(formData.credit) || 0,
 						// Νέα πεδία για συνεργεία
 						vehicle_plate: formData.vehiclePlate,
-						entry_date: formData.entryDate,
-						entry_time: formData.entryTime,
+						entry_date: formatDateForDB(formData.entryDate),
+						entry_time: formData.entryTime || null,
 						vehicle_category: formData.vehicleCategory,
 						manufacturer: formData.manufacturer,
 						service_type: formData.serviceType,
@@ -260,15 +224,20 @@ export default function CustomersPage() {
 						facility_location: formData.facilityLocation,
 						agreed_amount: parseFloat(formData.agreedAmount) || 0,
 						periodicity: formData.periodicity,
-						service_start_date: formData.serviceStartDate,
-						service_end_date: formData.serviceEndDate,
+						service_start_date: formatDateForDB(formData.serviceStartDate),
+						service_end_date: formatDateForDB(formData.serviceEndDate),
 						external_service: formData.externalService,
 						partner_afm: formData.partnerAfm
 					})
 					.eq("id", editingCustomer.id);
 
 				if (error) {
-					setMessage("Σφάλμα: " + error.message);
+					console.error("Database error:", error);
+					if (error.message.includes("invalid input syntax for type date")) {
+						setMessage("Σφάλμα: Μη έγκυρη ημερομηνία. Παρακαλώ ελέγξτε τις ημερομηνίες που εισάγατε.");
+					} else {
+						setMessage("Σφάλμα: " + error.message);
+					}
 				} else {
 					setMessage("Η καταχώρηση ενημερώθηκε επιτυχώς!");
 					setEditingCustomer(null);
@@ -296,8 +265,8 @@ export default function CustomersPage() {
 						credit: parseFloat(formData.credit) || 0,
 						// Νέα πεδία για συνεργεία
 						vehicle_plate: formData.vehiclePlate,
-						entry_date: formData.entryDate,
-						entry_time: formData.entryTime,
+						entry_date: formatDateForDB(formData.entryDate),
+						entry_time: formData.entryTime || null,
 						vehicle_category: formData.vehicleCategory,
 						manufacturer: formData.manufacturer,
 						service_type: formData.serviceType,
@@ -306,14 +275,19 @@ export default function CustomersPage() {
 						facility_location: formData.facilityLocation,
 						agreed_amount: parseFloat(formData.agreedAmount) || 0,
 						periodicity: formData.periodicity,
-						service_start_date: formData.serviceStartDate,
-						service_end_date: formData.serviceEndDate,
+						service_start_date: formatDateForDB(formData.serviceStartDate),
+						service_end_date: formatDateForDB(formData.serviceEndDate),
 						external_service: formData.externalService,
 						partner_afm: formData.partnerAfm
 					}]);
 
 				if (error) {
-					setMessage("Σφάλμα: " + error.message);
+					console.error("Database error:", error);
+					if (error.message.includes("invalid input syntax for type date")) {
+						setMessage("Σφάλμα: Μη έγκυρη ημερομηνία. Παρακαλώ ελέγξτε τις ημερομηνίες που εισάγατε.");
+					} else {
+						setMessage("Σφάλμα: " + error.message);
+					}
 				} else {
 					setMessage("Η καταχώρηση δημιουργήθηκε επιτυχώς!");
 					clearForm();
@@ -544,6 +518,30 @@ export default function CustomersPage() {
 								<h3 className="text-lg font-medium text-gray-900 mb-2">
 									{editingCustomer ? "Επεξεργασία Εγγραφής Συνεργείου" : "Δημιουργία Νέας Εγγραφής Συνεργείου"}
 								</h3>
+								
+								{/* Πληροφορίες για τη ρύθμιση της βάσης δεδομένων */}
+								<div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+									<div className="flex">
+										<div className="flex-shrink-0">
+											<svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+												<path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+											</svg>
+										</div>
+										<div className="ml-3">
+											<h3 className="text-sm font-medium text-yellow-800">
+												Σημαντική Πληροφορία για τη Βάση Δεδομένων
+											</h3>
+											<div className="mt-2 text-sm text-yellow-700">
+												<p>
+													Αν αντιμετωπίζετε σφάλματα με τη βάση δεδομένων, παρακαλώ εκτελέστε το αρχείο 
+													<code className="bg-yellow-100 px-1 rounded">complete_setup.sql</code> στο SQL Editor της Supabase 
+													για να δημιουργηθούν οι απαραίτητοι πίνακες και στήλες.
+												</p>
+											</div>
+										</div>
+									</div>
+								</div>
+								
 								{editingCustomer && (
 									<div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
 										<p className="text-sm text-blue-800">

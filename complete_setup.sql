@@ -1,7 +1,35 @@
 -- SQL Script για τη δημιουργία του συστήματος οχημάτων
 -- Εκτέλεσε αυτό το script στο SQL Editor της Supabase
 
--- ΒΗΜΑ 1: Προσθήκη στηλών debt και credit στον πίνακα customers (αν δεν υπάρχουν)
+-- ΒΗΜΑ 1: Δημιουργία πίνακα customers αν δεν υπάρχει
+CREATE TABLE IF NOT EXISTS customers (
+    id BIGSERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    email VARCHAR(255),
+    address TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Δημιουργία trigger για updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Έλεγχος αν υπάρχει η στήλη updated_at
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = TG_TABLE_NAME AND column_name = 'updated_at'
+    ) THEN
+        NEW.updated_at = NOW();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ΒΗΜΑ 2: Προσθήκη στηλών debt και credit στον πίνακα customers (αν δεν υπάρχουν)
 DO $$ 
 BEGIN
     -- Προσθήκη στήλης debt
@@ -27,7 +55,7 @@ BEGIN
     END IF;
 END $$;
 
--- ΒΗΜΑ 2: Δημιουργία πίνακα vehicles
+-- ΒΗΜΑ 4: Δημιουργία πίνακα vehicles
 CREATE TABLE IF NOT EXISTS vehicles (
     id BIGSERIAL PRIMARY KEY,
     customer_id BIGINT REFERENCES customers(id) ON DELETE SET NULL,
@@ -48,11 +76,11 @@ CREATE TABLE IF NOT EXISTS vehicles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- ΒΗΜΑ 3: Δημιουργία ευρετηρίων
+-- ΒΗΜΑ 5: Δημιουργία ευρετηρίων
 CREATE INDEX IF NOT EXISTS idx_vehicles_customer_id ON vehicles(customer_id);
 CREATE INDEX IF NOT EXISTS idx_vehicles_license_plate ON vehicles(license_plate);
 
--- ΒΗΜΑ 4: Προσθήκη σχολίων
+-- ΒΗΜΑ 6: Προσθήκη σχολίων
 COMMENT ON TABLE vehicles IS 'Πίνακας οχημάτων για το συνεργείο';
 COMMENT ON COLUMN vehicles.customer_id IS 'Αναφορά στον ιδιοκτήτη πελάτη';
 COMMENT ON COLUMN vehicles.license_plate IS 'Πινακίδες κυκλοφορίας';
@@ -67,15 +95,38 @@ COMMENT ON COLUMN vehicles.transmission IS 'Τύπος κιβωτίου';
 COMMENT ON COLUMN vehicles.mileage IS 'Χιλιόμετρα οχήματος';
 COMMENT ON COLUMN vehicles.vin IS 'Αριθμός VIN';
 
--- ΒΗΜΑ 5: Ενεργοποίηση RLS
+-- ΒΗΜΑ 6.5: Αναδημιουργία triggers μετά την προσθήκη στηλών
+-- Αφαίρεση παλιών triggers
+DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
+DROP TRIGGER IF EXISTS update_vehicles_updated_at ON vehicles;
+
+-- Δημιουργία νέων triggers
+CREATE TRIGGER update_customers_updated_at
+    BEFORE UPDATE ON customers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_vehicles_updated_at
+    BEFORE UPDATE ON vehicles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ΒΗΜΑ 8: Ενεργοποίηση RLS
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
 
--- ΒΗΜΑ 6: Δημιουργία policies
+-- ΒΗΜΑ 9: Δημιουργία policies
+-- Policies για customers table
+DROP POLICY IF EXISTS "Allow all operations on customers" ON customers;
+CREATE POLICY "Allow all operations on customers" ON customers
+    FOR ALL USING (true) WITH CHECK (true);
+
+-- Policies για vehicles table
 DROP POLICY IF EXISTS "Allow all operations on vehicles" ON vehicles;
 CREATE POLICY "Allow all operations on vehicles" ON vehicles
     FOR ALL USING (true) WITH CHECK (true);
 
--- ΒΗΜΑ 7: Ενημέρωση υπαρχόντων εγγραφών πελατών
+-- ΒΗΜΑ 10: Ενημέρωση υπαρχόντων εγγραφών πελατών
 UPDATE customers 
 SET debt = 0.00 
 WHERE debt IS NULL;
@@ -84,7 +135,7 @@ UPDATE customers
 SET credit = 0.00 
 WHERE credit IS NULL;
 
--- ΒΗΜΑ 7.5: Προσθήκη full_vehicle_name αν δεν υπάρχει
+-- ΒΗΜΑ 10.5: Προσθήκη full_vehicle_name αν δεν υπάρχει
 DO $$ BEGIN
     IF NOT EXISTS (
         SELECT column_name 
@@ -97,7 +148,7 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- ΒΗΜΑ 7.6: Μετανάστευση δεδομένων από παλιά πεδία στο full_vehicle_name
+-- ΒΗΜΑ 10.6: Μετανάστευση δεδομένων από παλιά πεδία στο full_vehicle_name
 UPDATE vehicles 
 SET full_vehicle_name = CONCAT_WS(' ', 
     NULLIF(make, ''), 
@@ -107,7 +158,7 @@ SET full_vehicle_name = CONCAT_WS(' ',
 )
 WHERE full_vehicle_name IS NULL OR full_vehicle_name = '';
 
--- ΒΗΜΑ 8: Επιβεβαίωση των αλλαγών
+-- ΒΗΜΑ 11: Επιβεβαίωση των αλλαγών
 SELECT 'Πίνακας customers - Στήλες debt/credit:' as info;
 SELECT column_name, data_type, column_default, is_nullable
 FROM information_schema.columns 
@@ -120,3 +171,6 @@ SELECT column_name, data_type, column_default, is_nullable
 FROM information_schema.columns 
 WHERE table_name = 'vehicles'
 ORDER BY ordinal_position;
+
+SELECT 'ΡΥΘΜΙΣΗ ΟΛΟΚΛΗΡΩΘΗΚΕ ΕΠΙΤΥΧΩΣ!' as status;
+SELECT 'Το σύστημα ψηφιακού πελατολογίου συνεργείου οχημάτων είναι έτοιμο για χρήση.' as message;
